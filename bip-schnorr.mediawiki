@@ -99,7 +99,7 @@ Input:
 
 The signature is valid if and only if the algorithm below does not fail.
 * Let ''P = point(pk)''; fail if ''point(pk)'' fails.
-* Let ''r = int(sig[0:32])''; fail if ''r &ge; p''.
+* Let ''r = int(sig[0:32])''.
 * Let ''s = int(sig[32:64])''; fail if ''s &ge; n''.
 * Let ''e = int(hash(bytes(r) || bytes(P) || m)) mod n''.
 * Let ''R = sG - eP''.
