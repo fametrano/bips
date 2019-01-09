@@ -80,7 +80,7 @@ def schnorr_verify(msg, pubkey, sig):
         return False
     r = int_from_bytes(sig[0:32])
     s = int_from_bytes(sig[32:64])
-    if (r >= p or s >= n):
+    if s >= n:
         return False
     e = int_from_bytes(hash_sha256(sig[0:32] + bytes_from_point(P) + msg)) % n
     R = point_add(point_mul(G, s), point_mul(P, n - e))
