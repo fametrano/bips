@@ -18,12 +18,15 @@ from typing import List, Tuple
 sys.path.insert(0, str(Path(__file__).parent / "secp256k1lab/src"))
 from secp256k1lab.secp256k1 import G, GE, Scalar
 
-from reference import NonceAgg, Sign, SigAgg, Verify, PartialSigVerify, TweakSK, TweakPK
+from reference import NonceGenInternal, NonceAgg, Sign, SigAgg, Verify, PartialSigVerify, TweakSK, TweakPK
 
 
 VECTORS_DIR = Path(__file__).resolve().parent / "vectors"
+NONCE_GEN_VECTORS = VECTORS_DIR / "test_vectors_nonce_gen.csv"
+NONCE_AGG_VECTORS = VECTORS_DIR / "test_vectors_nonce_agg.csv"
 SIGN_VECTORS = VECTORS_DIR / "test_vectors_sign.csv"
 SIGN_ERROR_VECTORS = VECTORS_DIR / "test_vectors_sign_error.csv"
+SIG_AGG_VECTORS = VECTORS_DIR / "test_vectors_sig_agg.csv"
 VERIFY_VECTORS = VECTORS_DIR / "test_vectors_verify.csv"
 PARTIAL_SIG_VERIFY_VECTORS = VECTORS_DIR / "test_vectors_partial_sig_verify.csv"
 TWEAK_VECTORS = VECTORS_DIR / "test_vectors_tweak.csv"
@@ -58,6 +61,58 @@ def parse_sig(b: bytes) -> Tuple[GE, Scalar]:
     R = GE.from_bytes_xonly(b[:32])
     s = Scalar.from_bytes_checked(b[32:])
     return R, s
+
+
+def run_nonce_gen_tests() -> List[str]:
+    failures = []
+
+    with open(NONCE_GEN_VECTORS, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        next(reader)
+
+        for row in reader:
+            (index, rand_str, sk_str, extra_in_str,
+             expected_secnonce_str, expected_pubnonce_str, comment) = row
+            rand_prime = bytes.fromhex(rand_str)
+            sk = Scalar.from_bytes_checked(bytes.fromhex(sk_str)) if sk_str else None
+            extra_in = bytes.fromhex(extra_in_str)
+
+            (r1, r2), (R1, R2) = NonceGenInternal(rand_prime, sk, extra_in)
+            secnonce = r1.to_bytes() + r2.to_bytes()
+            pubnonce = R1.to_bytes_compressed() + R2.to_bytes_compressed()
+            if (secnonce.hex().upper() != expected_secnonce_str
+                    or pubnonce.hex().upper() != expected_pubnonce_str):
+                failures.append(f"NonceGen #{index}: {comment}")
+
+    return failures
+
+
+def run_nonce_agg_tests() -> List[str]:
+    failures = []
+
+    with open(NONCE_AGG_VECTORS, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        next(reader)
+
+        for row in reader:
+            index, pubnonces_str, expected_result, expected_aggnonce_str, comment = row
+            expected = (expected_result == "TRUE")
+
+            try:
+                pubnonces = [parse_pubnonce(b) for b in parse_hex_list(pubnonces_str)]
+                R1, R2 = NonceAgg(pubnonces)
+                aggnonce = R1.to_bytes_compressed() + R2.to_bytes_compressed()
+            except ValueError:
+                aggnonce = None
+
+            if expected:
+                ok = aggnonce is not None and aggnonce.hex().upper() == expected_aggnonce_str
+            else:
+                ok = aggnonce is None
+            if not ok:
+                failures.append(f"NonceAgg #{index}: {comment}")
+
+    return failures
 
 
 def run_sign_tests() -> List[str]:
@@ -140,6 +195,39 @@ def run_sign_error_tests() -> List[str]:
             except ValueError:
                 continue
             failures.append(f"SignError #{index}: {comment} (Sign did not fail)")
+
+    return failures
+
+
+def run_sig_agg_tests() -> List[str]:
+    failures = []
+
+    with open(SIG_AGG_VECTORS, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        next(reader)
+
+        for row in reader:
+            (index, aggnonce_str, pks_str, msgs_str, pubnonces_str, psigs_str,
+             expected_result, expected_sig_str, comment) = row
+            expected = (expected_result == "TRUE")
+
+            try:
+                aggnonce = parse_pubnonce(bytes.fromhex(aggnonce_str))
+                pks = [GE.from_bytes_xonly(b) for b in parse_hex_list(pks_str)]
+                msgs = parse_hex_list(msgs_str)
+                pubnonces = [parse_pubnonce(b) for b in parse_hex_list(pubnonces_str)]
+                psigs = [Scalar.from_bytes_checked(b) for b in parse_hex_list(psigs_str)]
+                R, s = SigAgg(aggnonce, pks, msgs, pubnonces, psigs)
+                sig = R.to_bytes_xonly() + s.to_bytes()
+            except ValueError:
+                sig = None
+
+            if expected:
+                ok = sig is not None and sig.hex().upper() == expected_sig_str
+            else:
+                ok = sig is None
+            if not ok:
+                failures.append(f"SigAgg #{index}: {comment}")
 
     return failures
 
@@ -234,14 +322,18 @@ def run_tweak_tests() -> List[str]:
 
 
 def main():
-    for filename in [SIGN_VECTORS, SIGN_ERROR_VECTORS, VERIFY_VECTORS, PARTIAL_SIG_VERIFY_VECTORS, TWEAK_VECTORS]:
+    for filename in [NONCE_GEN_VECTORS, NONCE_AGG_VECTORS, SIGN_VECTORS, SIGN_ERROR_VECTORS,
+                     SIG_AGG_VECTORS, VERIFY_VECTORS, PARTIAL_SIG_VERIFY_VECTORS, TWEAK_VECTORS]:
         if not os.path.exists(filename):
             print(f"ERROR: Missing {filename}. Run gen_test_vectors.py first.")
             sys.exit(1)
 
     failures = []
+    failures.extend(run_nonce_gen_tests())
+    failures.extend(run_nonce_agg_tests())
     failures.extend(run_sign_tests())
     failures.extend(run_sign_error_tests())
+    failures.extend(run_sig_agg_tests())
     failures.extend(run_partial_sig_verify_tests())
     failures.extend(run_verify_tests())
     failures.extend(run_tweak_tests())

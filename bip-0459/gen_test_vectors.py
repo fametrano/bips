@@ -7,8 +7,11 @@ Usage:
     python gen_test_vectors.py
 
 Outputs:
+    - vectors/test_vectors_nonce_gen.csv          (NonceGen with a fixed rand')
+    - vectors/test_vectors_nonce_agg.csv          (NonceAgg: success and failure cases)
     - vectors/test_vectors_sign.csv               (end-to-end signing with fixed nonces)
     - vectors/test_vectors_sign_error.csv         (sessions in which Sign must fail)
+    - vectors/test_vectors_sig_agg.csv            (SigAgg: success and failure cases)
     - vectors/test_vectors_verify.csv             (Verify: success and failure cases)
     - vectors/test_vectors_partial_sig_verify.csv (PartialSigVerify cases)
     - vectors/test_vectors_tweak.csv              (plain and X-only key tweaking)
@@ -25,6 +28,7 @@ from secp256k1lab.secp256k1 import FE, G, GE, Scalar
 from secp256k1lab.util import bytes_from_int, int_from_bytes
 
 from reference import (
+    NonceGenInternal,
     NonceAgg,
     Sign,
     SigAgg,
@@ -38,8 +42,11 @@ from reference import (
 
 
 VECTORS_DIR = Path(__file__).resolve().parent / "vectors"
+NONCE_GEN_VECTORS = VECTORS_DIR / "test_vectors_nonce_gen.csv"
+NONCE_AGG_VECTORS = VECTORS_DIR / "test_vectors_nonce_agg.csv"
 SIGN_VECTORS = VECTORS_DIR / "test_vectors_sign.csv"
 SIGN_ERROR_VECTORS = VECTORS_DIR / "test_vectors_sign_error.csv"
+SIG_AGG_VECTORS = VECTORS_DIR / "test_vectors_sig_agg.csv"
 VERIFY_VECTORS = VECTORS_DIR / "test_vectors_verify.csv"
 PARTIAL_SIG_VERIFY_VECTORS = VECTORS_DIR / "test_vectors_partial_sig_verify.csv"
 TWEAK_VECTORS = VECTORS_DIR / "test_vectors_tweak.csv"
@@ -132,6 +139,16 @@ def format_list(items: List[bytes], sep: str = ";") -> str:
     return sep.join(item.hex().upper() for item in items)
 
 
+def find_off_curve_x() -> bytes:
+    for i in range(1, 256):
+        cand = bytes([i] * 32)
+        try:
+            GE.from_bytes_xonly(cand)
+        except Exception:
+            return cand
+    raise RuntimeError("could not find an off-curve x")
+
+
 def sign_session(signers):
     """Run NonceAgg -> Sign (per signer) -> SigAgg with deterministic inputs."""
     sks = [s[0] for s in signers]
@@ -146,6 +163,79 @@ def sign_session(signers):
     ]
     sig = SigAgg(aggnonce, pks, msgs, pubnonces, psigs)
     return aggnonce, psigs, sig
+
+
+def gen_nonce_gen_vectors(f):
+    writer = csv.writer(f)
+    writer.writerow((
+        "index", "rand_", "secret_key", "extra_in",
+        "expected_secnonce", "expected_pubnonce", "comment",
+    ))
+
+    def write_row(idx, rand_prime, sk, extra_in, comment):
+        secnonce, pubnonce = NonceGenInternal(rand_prime, sk, extra_in)
+        writer.writerow((
+            idx,
+            rand_prime.hex().upper(),
+            sk.to_bytes().hex().upper() if sk is not None else "",
+            extra_in.hex().upper(),
+            serialize_secnonce(secnonce).hex().upper(),
+            serialize_pubnonce(pubnonce).hex().upper(),
+            comment,
+        ))
+
+    rand_prime = bytes([0x0F] * 32)
+    sk = scalar_from_byte(0x02)
+    extra_in = bytes([0x08] * 32)
+    write_row(0, rand_prime, sk, extra_in, "Secret key and 32-byte extra_in")
+    write_row(1, rand_prime, sk, b"", "Secret key and no extra_in")
+    write_row(2, rand_prime, sk, bytes([0x26] * 38), "Secret key and 38-byte extra_in")
+    write_row(3, rand_prime, None, extra_in, "No secret key and 32-byte extra_in")
+    write_row(4, rand_prime, None, b"", "No secret key and no extra_in")
+
+
+def gen_nonce_agg_vectors(f):
+    writer = csv.writer(f)
+    writer.writerow((
+        "index", "pubnonces", "expected_result", "expected_aggnonce", "comment",
+    ))
+
+    def write_row(idx, pubnonces, expected, comment):
+        try:
+            aggnonce = NonceAgg([
+                (GE.from_bytes_compressed(p[:33]), GE.from_bytes_compressed(p[33:]))
+                for p in pubnonces
+            ])
+            result = "TRUE"
+        except ValueError:
+            result = "FALSE"
+        if result != expected:
+            raise RuntimeError(f"NonceAgg result is not {expected}: {comment}")
+        writer.writerow((
+            idx,
+            format_list(pubnonces),
+            expected,
+            serialize_pubnonce(aggnonce).hex().upper() if expected == "TRUE" else "",
+            comment,
+        ))
+
+    signers = [make_signer(i) for i in range(3)]
+    pubnonces = [serialize_pubnonce(s[4]) for s in signers]
+    (R1_0, R2_0), (R1_1, R2_1) = signers[0][4], signers[1][4]
+    off_curve = find_off_curve_x()
+
+    write_row(0, pubnonces[:2], "TRUE", "Two signers")
+    write_row(1, pubnonces, "TRUE", "Three signers")
+    write_row(2, [pubnonces[0], b"\x04" + pubnonces[1][1:]], "FALSE",
+              "Signer 1's R1 has an invalid prefix byte 0x04")
+    write_row(3, [pubnonces[0][:33] + b"\x02" + off_curve, pubnonces[1]], "FALSE",
+              "Signer 0's R2 is not on the curve")
+    write_row(4, [pubnonces[0][:33] + b"\x02" + bytes_from_int(FE.SIZE + 1), pubnonces[1]], "FALSE",
+              "Signer 0's R2 exceeds field size")
+    write_row(5, [pubnonces[0], serialize_pubnonce((-R1_0, R2_1))], "FALSE",
+              "Aggregate nonce R1 is infinity")
+    write_row(6, [pubnonces[0], serialize_pubnonce((R1_1, -R2_0))], "FALSE",
+              "Aggregate nonce R2 is infinity")
 
 
 def gen_sign_vectors(f):
@@ -264,6 +354,40 @@ def gen_sign_error_vectors(f):
               aggnonce[:33] + b"\x02" + bytes_from_int(FE.SIZE + 1))
 
 
+def gen_sig_agg_vectors(f):
+    writer = csv.writer(f)
+    writer.writerow((
+        "index", "aggnonce", "pubkeys", "messages", "pubnonces", "psigs",
+        "expected_result", "expected_sig", "comment",
+    ))
+
+    signers = [make_signer(i) for i in range(2)]
+    aggnonce, psigs, sig = sign_session(signers)
+    pks = [s[1] for s in signers]
+    msgs = [s[2] for s in signers]
+    assert Verify(pks, msgs, sig)
+
+    def write_row(idx, psigs_bytes, expected_sig, comment):
+        writer.writerow((
+            idx,
+            serialize_pubnonce(aggnonce).hex().upper(),
+            format_list([serialize_pk(p) for p in pks]),
+            format_list(msgs),
+            format_list([serialize_pubnonce(s[4]) for s in signers]),
+            format_list(psigs_bytes),
+            "TRUE" if expected_sig is not None else "FALSE",
+            expected_sig.hex().upper() if expected_sig is not None else "",
+            comment,
+        ))
+
+    psigs_bytes = [p.to_bytes() for p in psigs]
+    write_row(0, psigs_bytes, serialize_sig(sig), "Two signers")
+    write_row(1, [psigs_bytes[0], bytes_from_int(n)], None,
+              "Signer 1's psig is n (out of range)")
+    write_row(2, [bytes([0xff] * 32), psigs_bytes[1]], None,
+              "Signer 0's psig is 2^256 - 1")
+
+
 def gen_verify_vectors(f):
     writer = csv.writer(f)
     writer.writerow((
@@ -333,15 +457,6 @@ def gen_verify_vectors(f):
                      s_max.hex().upper(), "FALSE",
                      "s = 2^256 - 1"))
     idx += 1
-
-    def find_off_curve_x() -> bytes:
-        for i in range(1, 256):
-            cand = bytes([i] * 32)
-            try:
-                GE.from_bytes_xonly(cand)
-            except Exception:
-                return cand
-        raise RuntimeError("could not find an off-curve x")
 
     off_curve = find_off_curve_x()
 
@@ -478,6 +593,14 @@ def gen_tweak_vectors(f):
 if __name__ == "__main__":
     os.makedirs(VECTORS_DIR, exist_ok=True)
 
+    print(f"Generating {NONCE_GEN_VECTORS}")
+    with open(NONCE_GEN_VECTORS, "w", newline="", encoding="utf-8") as f:
+        gen_nonce_gen_vectors(f)
+
+    print(f"Generating {NONCE_AGG_VECTORS}")
+    with open(NONCE_AGG_VECTORS, "w", newline="", encoding="utf-8") as f:
+        gen_nonce_agg_vectors(f)
+
     print(f"Generating {SIGN_VECTORS}")
     with open(SIGN_VECTORS, "w", newline="", encoding="utf-8") as f:
         gen_sign_vectors(f)
@@ -485,6 +608,10 @@ if __name__ == "__main__":
     print(f"Generating {SIGN_ERROR_VECTORS}")
     with open(SIGN_ERROR_VECTORS, "w", newline="", encoding="utf-8") as f:
         gen_sign_error_vectors(f)
+
+    print(f"Generating {SIG_AGG_VECTORS}")
+    with open(SIG_AGG_VECTORS, "w", newline="", encoding="utf-8") as f:
+        gen_sig_agg_vectors(f)
 
     print(f"Generating {VERIFY_VECTORS}")
     with open(VERIFY_VECTORS, "w", newline="", encoding="utf-8") as f:

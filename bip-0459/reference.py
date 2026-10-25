@@ -64,9 +64,8 @@ def TweakPK(pk: GE, t: Scalar, is_xonly: bool) -> GE:
 # Nonce Generation and Aggregation
 #
 
-def NonceGen(sk: Optional[Scalar] = None,
-             extra_in: bytes = b'') -> Tuple[Tuple[Scalar, Scalar], Tuple[GE, GE]]:
-    rand_prime = secrets.token_bytes(32)
+def NonceGenInternal(rand_prime: bytes, sk: Optional[Scalar] = None,
+                     extra_in: bytes = b'') -> Tuple[Tuple[Scalar, Scalar], Tuple[GE, GE]]:
     if sk is not None:
         rand = xor_bytes(sk.to_bytes(), tagged_hash(FULLAGG_TAG_AUX, rand_prime))
     else:
@@ -76,6 +75,12 @@ def NonceGen(sk: Optional[Scalar] = None,
     assert r1 != 0 and r2 != 0
     R1, R2 = r1 * G, r2 * G
     return (r1, r2), (R1, R2)
+
+
+def NonceGen(sk: Optional[Scalar] = None,
+             extra_in: bytes = b'') -> Tuple[Tuple[Scalar, Scalar], Tuple[GE, GE]]:
+    rand_prime = secrets.token_bytes(32)
+    return NonceGenInternal(rand_prime, sk, extra_in)
 
 
 def NonceAgg(pubnonces: List[Tuple[GE, GE]]) -> Tuple[GE, GE]:
