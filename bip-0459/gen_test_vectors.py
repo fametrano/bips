@@ -521,6 +521,16 @@ def gen_verify_vectors(f):
                      "Empty signer list"))
     idx += 1
 
+    writer.writerow((idx, format_list(pks), format_list([msgs[0][:31], msgs[1]]),
+                     sig_bytes.hex().upper(), "FALSE",
+                     "Message of 31 bytes"))
+    idx += 1
+
+    writer.writerow((idx, format_list(pks), format_list([msgs[0] + b"\x00", msgs[1]]),
+                     sig_bytes.hex().upper(), "FALSE",
+                     "Message of 33 bytes"))
+    idx += 1
+
 
 def gen_partial_sig_verify_vectors(f):
     writer = csv.writer(f)
