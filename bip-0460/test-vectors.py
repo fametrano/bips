@@ -1065,12 +1065,15 @@ def make_consensus_vectors():
              True)
 
     # 31: invalid, opted-out witness program is not a valid x coordinate.
-    # BIP 340 verification fails at lift_x.
+    # BIP 340 verification fails at lift_x. Input 0 is signed over its own
+    # message, so its r is a valid x coordinate and the program is the only
+    # value that fails to lift.
     keys, utxos, tx = fresh_setup(2, key_offset=55)
     utxos[0] = TxOut(100_000_000,
                      bytes([0x52, 0x20]) + test_offcurve_x(b"optout"))
+    _, sig0_31 = sign_optout(tx, utxos, 0, keys[0][2], SIGHASH_DEFAULT)
     _, sig1_31 = sign_optout(tx, utxos, 1, keys[1][2], SIGHASH_DEFAULT)
-    tx.witnesses[0] = [optout_element(test_garbage(b"offcurve sig", 64))]
+    tx.witnesses[0] = [optout_element(sig0_31)]
     tx.witnesses[1] = [optout_element(sig1_31)]
     add_case("program-offcurve-optout", "Opted-out input whose witness "
              "program is not a valid x-only public key", tx, utxos, False,
