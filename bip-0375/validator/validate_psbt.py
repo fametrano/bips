@@ -183,8 +183,13 @@ def validate_ecdh_coverage(psbt: PSBT) -> Tuple[bool, str]:
             if not dleq_proof:
                 return False, "Global ECDH share missing DLEQ proof"
 
+            for i, input_map in enumerate(psbt.i):
+                if is_input_eligible(input_map) and pubkey_from_eligible_input(input_map) is None:
+                    return False, f"Input {i} missing public key for DLEQ verification"
+
             _, summed_pubkey_bytes = collect_input_ecdh_and_pubkey(psbt, scan_key)
-            assert summed_pubkey_bytes is not None, "No public keys found for inputs"
+            if summed_pubkey_bytes is None:
+                return False, "Global ECDH share set but no eligible inputs"
             A_sum = GE.from_bytes(summed_pubkey_bytes)
 
             valid, msg = validate_dleq_proof(A_sum, scan_key, ecdh_share, dleq_proof)

@@ -83,9 +83,9 @@ def pubkey_from_eligible_input(input_map: BIP375PSBTMap) -> Optional[GE]:
         if len(pubkey) == 33:
             return GE.from_bytes(pubkey)
 
-    # Try PSBT_IN_WITNESS_UTXO for P2TR inputs
-    spk = parse_witness_utxo(input_map[PSBT_IN_WITNESS_UTXO])
-    if spk and _is_p2tr(spk):
+    # P2TR inputs carry the key in the scriptPubKey
+    spk = _script_pubkey_from_psbt_input(input_map)
+    if _is_p2tr(spk):
         return GE.from_bytes(bytes([0x02]) + spk[2:34])
     return None
 
