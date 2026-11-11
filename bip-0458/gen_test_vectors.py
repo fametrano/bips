@@ -484,6 +484,22 @@ def gen_incaggregate_vectors(f):
     ))
     idx += 1
 
+    # Success: Increment empty aggregate whose s is not zero
+    nonzero_empty_aggsig = bytes_from_int(1)
+    result_12 = IncAggregate(nonzero_empty_aggsig, [], [(pk0, msg0, sig0)])
+    writer.writerow((
+        idx,
+        nonzero_empty_aggsig.hex().upper(),
+        "", "",
+        pk0.hex().upper(),
+        msg0.hex().upper(),
+        sig0.hex().upper(),
+        "TRUE",
+        result_12.hex().upper(),
+        "Add single signature to empty aggregate with s = 1"
+    ))
+    idx += 1
+
 
 def gen_verify_vectors(f):
     """Generate test vectors for VerifyAggregate function."""
@@ -809,6 +825,16 @@ def gen_verify_vectors(f):
         msg_short.hex().upper(),
         "FALSE",
         "Message too short"
+    ))
+    idx += 1
+
+    # Failure: Empty signature list with s = n
+    writer.writerow((
+        idx,
+        bytes_from_int(n).hex().upper(),
+        "", "",
+        "FALSE",
+        "Empty signature list with s = n"
     ))
     idx += 1
 
