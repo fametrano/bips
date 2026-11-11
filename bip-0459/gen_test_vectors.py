@@ -11,6 +11,7 @@ Outputs:
     - vectors/test_vectors_nonce_agg.csv          (NonceAgg: success and failure cases)
     - vectors/test_vectors_sign.csv               (end-to-end signing with fixed nonces)
     - vectors/test_vectors_sign_error.csv         (sessions in which Sign must fail)
+    - vectors/test_vectors_sig_agg.csv            (SigAgg: success and failure cases)
     - vectors/test_vectors_verify.csv             (Verify: success and failure cases)
     - vectors/test_vectors_partial_sig_verify.csv (PartialSigVerify cases)
     - vectors/test_vectors_tweak.csv              (plain and X-only key tweaking)
@@ -46,6 +47,7 @@ NONCE_GEN_VECTORS = VECTORS_DIR / "test_vectors_nonce_gen.csv"
 NONCE_AGG_VECTORS = VECTORS_DIR / "test_vectors_nonce_agg.csv"
 SIGN_VECTORS = VECTORS_DIR / "test_vectors_sign.csv"
 SIGN_ERROR_VECTORS = VECTORS_DIR / "test_vectors_sign_error.csv"
+SIG_AGG_VECTORS = VECTORS_DIR / "test_vectors_sig_agg.csv"
 VERIFY_VECTORS = VECTORS_DIR / "test_vectors_verify.csv"
 PARTIAL_SIG_VERIFY_VECTORS = VECTORS_DIR / "test_vectors_partial_sig_verify.csv"
 TWEAK_VECTORS = VECTORS_DIR / "test_vectors_tweak.csv"
@@ -195,6 +197,7 @@ def gen_nonce_gen_vectors(f):
     row(1, sk, b"", "Secret key and no extra_in")
     row(2, None, extra_in, "No secret key and extra_in")
     row(3, None, b"", "No secret key and no extra_in")
+    row(4, sk, bytes([0x26] * 38), "Secret key and 38-byte extra_in")
 
 
 def gen_nonce_agg_vectors(f):
@@ -279,6 +282,9 @@ def gen_sign_vectors(f):
     write_row(5, [make_tweaked_signer(0, 0x21, False), make_tweaked_signer(1, 0x22, True)],
               "Signers with tweaked keys")
     write_row(6, make_duplicate_pm_signers(), "Exact duplicate (pk, m) entries")
+    sk0, pk0, msg0, secnonce0, pubnonce0 = make_signer(0)
+    write_row(7, [(-sk0, -pk0, msg0, secnonce0, pubnonce0), make_signer(1)],
+              "Untweaked signer key with odd y")
 
 
 def gen_sign_error_vectors(f):
@@ -351,6 +357,67 @@ def gen_sign_error_vectors(f):
     write_row(8, signers[0], pks, msgs, pubnonces,
               "Aggregate nonce second half exceeds field size",
               aggnonce[:33] + b"\x02" + bytes_from_int(FE.SIZE + 1))
+
+    # Inputs that cannot be represented as Scalar or GE are written directly
+    def write_raw_row(idx, sk_bytes, secnonce_bytes, pubnonces_bytes, comment):
+        writer.writerow((
+            idx,
+            sk_bytes.hex().upper(),
+            msg.hex().upper(),
+            secnonce_bytes.hex().upper(),
+            aggnonce.hex().upper(),
+            format_list([serialize_pk(p) for p in pks]),
+            format_list(msgs),
+            format_list(pubnonces_bytes),
+            comment,
+        ))
+
+    secnonce_bytes = serialize_secnonce(secnonce)
+    pubnonces_bytes = [serialize_pubnonce(p) for p in pubnonces]
+    bad_r2_pubnonces = list(pubnonces_bytes)
+    bad_r2_pubnonces[1] = pubnonces_bytes[1][:33] + b"\x02" + bytes(32)
+    write_raw_row(9, sk.to_bytes(), secnonce_bytes, bad_r2_pubnonces,
+                  "Signer 1's R2 is not on the curve")
+    write_raw_row(10, sk.to_bytes(), bytes_from_int(n) + secnonce_bytes[32:], pubnonces_bytes,
+                  "Secnonce first value is n (out of range)")
+    write_raw_row(11, sk.to_bytes(), secnonce_bytes[:32] + bytes_from_int(n), pubnonces_bytes,
+                  "Secnonce second value is n (out of range)")
+    write_raw_row(12, bytes_from_int(n), secnonce_bytes, pubnonces_bytes,
+                  "Secret key is n (out of range)")
+
+
+def gen_sig_agg_vectors(f):
+    writer = csv.writer(f)
+    writer.writerow((
+        "index", "aggnonce", "pubkeys", "messages", "pubnonces", "psigs",
+        "expected_result", "expected_sig", "comment",
+    ))
+
+    signers = [make_signer(i) for i in range(2)]
+    aggnonce, psigs, sig = sign_session(signers)
+    pks = [s[1] for s in signers]
+    msgs = [s[2] for s in signers]
+    assert Verify(pks, msgs, sig)
+
+    def write_row(idx, psigs_bytes, expected_sig, comment):
+        writer.writerow((
+            idx,
+            serialize_pubnonce(aggnonce).hex().upper(),
+            format_list([serialize_pk(p) for p in pks]),
+            format_list(msgs),
+            format_list([serialize_pubnonce(s[4]) for s in signers]),
+            format_list(psigs_bytes),
+            "TRUE" if expected_sig is not None else "FALSE",
+            expected_sig.hex().upper() if expected_sig is not None else "",
+            comment,
+        ))
+
+    psigs_bytes = [p.to_bytes() for p in psigs]
+    write_row(0, psigs_bytes, serialize_sig(sig), "Two signers")
+    write_row(1, [psigs_bytes[0], bytes_from_int(n)], None,
+              "Signer 1's psig is n (out of range)")
+    write_row(2, [bytes([0xff] * 32), psigs_bytes[1]], None,
+              "Signer 0's psig is 2^256 - 1")
 
 
 def gen_verify_vectors(f):
@@ -524,6 +591,28 @@ def gen_partial_sig_verify_vectors(f):
     writer.writerow((idx, 0, psigs[0].to_bytes().hex().upper(),
                      pks_hex, msgs_hex, inf_pubnonces,
                      "FALSE", "Aggregate nonce R1 is infinity"))
+    idx += 1
+
+    def write_encoding_row(idx, pks_bytes, pubnonces_bytes, comment):
+        writer.writerow((idx, 0, psigs[0].to_bytes().hex().upper(),
+                         format_list(pks_bytes), msgs_hex, format_list(pubnonces_bytes),
+                         "FALSE", comment))
+
+    pks_bytes = [serialize_pk(s[1]) for s in signers]
+    pubnonces_bytes = [serialize_pubnonce(s[4]) for s in signers]
+    off_curve = bytes(32)
+    write_encoding_row(idx, pks_bytes, [b"\x04" + pubnonces_bytes[0][1:], pubnonces_bytes[1]],
+                       "Signer 0's R1 has an invalid prefix byte 0x04")
+    idx += 1
+    write_encoding_row(idx, pks_bytes, [pubnonces_bytes[0][:33] + b"\x02" + off_curve, pubnonces_bytes[1]],
+                       "Signer 0's R2 is not on the curve")
+    idx += 1
+    write_encoding_row(idx, pks_bytes,
+                       [pubnonces_bytes[0], b"\x02" + bytes_from_int(FE.SIZE + 1) + pubnonces_bytes[1][33:]],
+                       "Signer 1's R1 exceeds field size")
+    idx += 1
+    write_encoding_row(idx, [off_curve, pks_bytes[1]], pubnonces_bytes,
+                       "Signer 0's public key is not on the curve")
 
 
 def gen_tweak_vectors(f):
@@ -569,6 +658,10 @@ def gen_tweak_vectors(f):
     error_row(5, odd, odd, True, "X-only tweak resulting in the point at infinity")
     writer.writerow((6, even.to_bytes().hex().upper(), bytes_from_int(n).hex().upper(),
                      "FALSE", "FALSE", "", "", "Tweak = n (out of range)"))
+    row(7, even, Scalar(0), False, "Plain tweak = 0")
+    row(8, odd, Scalar(0), True, "X-only tweak = 0 of an odd-y key")
+    writer.writerow((9, even.to_bytes().hex().upper(), bytes_from_int(n).hex().upper(),
+                     "TRUE", "FALSE", "", "", "X-only tweak = n (out of range)"))
 
 
 if __name__ == "__main__":
@@ -589,6 +682,10 @@ if __name__ == "__main__":
     print(f"Generating {SIGN_ERROR_VECTORS}")
     with open(SIGN_ERROR_VECTORS, "w", newline="", encoding="utf-8") as f:
         gen_sign_error_vectors(f)
+
+    print(f"Generating {SIG_AGG_VECTORS}")
+    with open(SIG_AGG_VECTORS, "w", newline="", encoding="utf-8") as f:
+        gen_sig_agg_vectors(f)
 
     print(f"Generating {VERIFY_VECTORS}")
     with open(VERIFY_VECTORS, "w", newline="", encoding="utf-8") as f:
