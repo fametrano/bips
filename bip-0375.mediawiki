@@ -11,7 +11,7 @@
   Assigned: 2025-01-08
   License: BSD-2-Clause
   Discussion: https://groups.google.com/g/bitcoindev/c/5G5wzqUXyk4
-  Version: 0.1.4
+  Version: 0.1.7
   Requires: 352, 370, 374
 </pre>
 
@@ -434,6 +434,9 @@ Use the provided [[bip-0375/test_runner.py|test runner]] to validate each test v
 
 == Changelog ==
 
+* '''0.1.7''' (2026-11-11):
+** Stop the reference crashing on an eligible input with no PSBT_IN_WITNESS_UTXO and no usable PSBT_IN_BIP32_DERIVATION, and on a global ECDH share with no eligible input; reject them where a DLEQ proof is checked; add invalid test vectors for them.
+** Reject a PSBT_IN_BIP32_DERIVATION key that Bitcoin Core rejects as not a valid public key, and a global ECDH share where the eligible input keys sum to the point at infinity; the reference crashed on a 33-byte key off the curve and on that sum. Add invalid test vectors for them, and a valid one with a hybrid key.
 * '''0.1.4''' (2026-11-10):
 ** Replace the bare OP_2 valid test vector with an In Progress vector that passes every check.
 * '''0.1.3''' (2026-09-29):
