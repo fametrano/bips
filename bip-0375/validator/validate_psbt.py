@@ -13,6 +13,7 @@ from deps.bitcoin_test.messages import COutPoint
 from deps.bitcoin_test.psbt import (
     PSBT,
     PSBT_GLOBAL_TX_MODIFIABLE,
+    PSBT_IN_BIP32_DERIVATION,
     PSBT_IN_OUTPUT_INDEX,
     PSBT_IN_PREVIOUS_TXID,
     PSBT_IN_SIGHASH_TYPE,
@@ -49,6 +50,8 @@ def validate_psbt_structure(psbt: PSBT) -> Tuple[bool, str]:
     - SP_V0_INFO must be 66 bytes (33-byte scan key + 33-byte spend key)
     - ECDH shares must be 33 bytes
     - DLEQ proofs must be 64 bytes
+    - PSBT_IN_BIP32_DERIVATION keys must be valid public keys (compressed,
+      uncompressed or hybrid)
     - TX_MODIFIABLE is zero when PSBT_OUT_SCRIPT set for SP output
     """
     # Check output requirements
@@ -127,6 +130,15 @@ def validate_psbt_structure(psbt: PSBT) -> Tuple[bool, str]:
                     f"Input {i} DLEQ proof has wrong length ({len(dleq_proof)} bytes, expected 64)",
                 )
 
+    # Validate PSBT_IN_BIP32_DERIVATION public keys
+    for i, input_map in enumerate(psbt.i):
+        for pubkey, _ in input_map.get_all_by_type(PSBT_IN_BIP32_DERIVATION):
+            if not is_valid_pubkey(pubkey):
+                return (
+                    False,
+                    f"Input {i} PSBT_IN_BIP32_DERIVATION key is not a valid public key",
+                )
+
     # Check TX_MODIFIABLE flag when PSBT_OUT_SCRIPT is set
     for output_map in psbt.o:
         if PSBT_OUT_SP_V0_INFO in output_map and PSBT_OUT_SCRIPT in output_map:
@@ -137,6 +149,24 @@ def validate_psbt_structure(psbt: PSBT) -> Tuple[bool, str]:
                         "PSBT_OUT_SCRIPT set for silent payments output but PSBT_GLOBAL_TX_MODIFIABLE not zeroed",
                     )
     return True, None
+
+
+def is_valid_pubkey(pubkey: bytes) -> bool:
+    """
+    Return whether pubkey is a point on the curve, encoded as Bitcoin Core accepts:
+    compressed, uncompressed, or hybrid (prefix 06 or 07 matching the parity of y)
+    """
+    if len(pubkey) == 65 and pubkey[0] in (6, 7):
+        if pubkey[0] & 1 != pubkey[-1] & 1:
+            return False
+        pubkey = b"\x04" + pubkey[1:]
+    if len(pubkey) not in (33, 65):
+        return False
+    try:
+        GE.from_bytes(pubkey)
+    except ValueError:
+        return False
+    return True
 
 
 def validate_ecdh_coverage(psbt: PSBT) -> Tuple[bool, str]:
@@ -183,9 +213,22 @@ def validate_ecdh_coverage(psbt: PSBT) -> Tuple[bool, str]:
             if not dleq_proof:
                 return False, "Global ECDH share missing DLEQ proof"
 
-            _, summed_pubkey_bytes = collect_input_ecdh_and_pubkey(psbt, scan_key)
-            assert summed_pubkey_bytes is not None, "No public keys found for inputs"
-            A_sum = GE.from_bytes(summed_pubkey_bytes)
+            A_sum = None
+            for i, input_map in enumerate(psbt.i):
+                if not is_input_eligible(input_map):
+                    continue
+                A = pubkey_from_eligible_input(input_map)
+                if A is None:
+                    return False, f"Input {i} missing public key for DLEQ verification"
+                A_sum = A if A_sum is None else A_sum + A
+
+            if A_sum is None:
+                return False, "Global ECDH share set but no eligible inputs"
+            if A_sum.infinity:
+                return (
+                    False,
+                    "Global DLEQ proof invalid: eligible input public keys sum to the point at infinity",
+                )
 
             valid, msg = validate_dleq_proof(A_sum, scan_key, ecdh_share, dleq_proof)
             if not valid:

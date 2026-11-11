@@ -11,7 +11,7 @@
   Assigned: 2025-01-08
   License: BSD-2-Clause
   Discussion: https://groups.google.com/g/bitcoindev/c/5G5wzqUXyk4
-  Version: 0.1.4
+  Version: 0.1.7
   Requires: 352, 370, 374
 </pre>
 
@@ -292,6 +292,12 @@ Use the provided [[bip-0375/test_runner.py|test runner]] to validate each test v
 | PSBT Structure
 | missing PSBT_OUT_SCRIPT field when sending to non-sp output
 |-
+| PSBT Structure
+| PSBT_IN_BIP32_DERIVATION key not on the curve
+|-
+| PSBT Structure
+| PSBT_IN_BIP32_DERIVATION hybrid key with the wrong parity prefix
+|-
 | ECDH Coverage
 | only one ineligible P2SH multisig input when PSBT_OUT_SCRIPT set for sp output
 |-
@@ -312,6 +318,18 @@ Use the provided [[bip-0375/test_runner.py|test runner]] to validate each test v
 |-
 | ECDH Coverage
 | missing PSBT_IN_BIP32_DERIVATION field for input when PSBT_IN_SP_DLEQ set
+|-
+| ECDH Coverage
+| missing PSBT_IN_BIP32_DERIVATION field for P2PKH input when PSBT_IN_SP_DLEQ set
+|-
+| ECDH Coverage
+| missing PSBT_IN_BIP32_DERIVATION field for P2PKH input when PSBT_GLOBAL_SP_DLEQ set
+|-
+| ECDH Coverage
+| PSBT_GLOBAL_SP_ECDH_SHARE set with no eligible inputs
+|-
+| ECDH Coverage
+| eligible input public keys sum to the point at infinity when PSBT_GLOBAL_SP_ECDH_SHARE set
 |-
 | ECDH Coverage
 | output 1 missing ECDH share for scan key with one input / three sp outputs (different scan keys)
@@ -409,10 +427,16 @@ Use the provided [[bip-0375/test_runner.py|test runner]] to validate each test v
 |-
 | In Progress
 | large PSBT with nine mixed inputs / six outputs - some inputs signed
+|-
+| In Progress
+| one P2PKH input with its PSBT_IN_BIP32_DERIVATION key in compressed and hybrid form
 |}
 
 == Changelog ==
 
+* '''0.1.7''' (2026-11-11):
+** Stop the reference crashing on an eligible input with no PSBT_IN_WITNESS_UTXO and no usable PSBT_IN_BIP32_DERIVATION, and on a global ECDH share with no eligible input; reject them where a DLEQ proof is checked; add invalid test vectors for them.
+** Reject a PSBT_IN_BIP32_DERIVATION key that Bitcoin Core rejects as not a valid public key, and a global ECDH share where the eligible input keys sum to the point at infinity; the reference crashed on a 33-byte key off the curve and on that sum. Add invalid test vectors for them, and a valid one with a hybrid key.
 * '''0.1.4''' (2026-11-10):
 ** Replace the bare OP_2 valid test vector with an In Progress vector that passes every check.
 * '''0.1.3''' (2026-09-29):
