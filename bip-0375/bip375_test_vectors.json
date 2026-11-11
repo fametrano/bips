@@ -241,6 +241,111 @@
       }
     },
     {
+      "description": "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for P2PKH input when PSBT_IN_SP_DLEQ set",
+      "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBAQYBAAABDiDRWWCTHQ/VS625v0yfGnY15sdUEIhwkyA9zjLC8OZ0egEPBAAAAAABAFUCAAAAAQbPUZ0i7HpsEKblZ9NlB1NmQQhSpwZcGWko01L7krdrAAAAAAD/////AaCGAQAAAAAAGXapFLQ847DJ8cdf+AFXdTT9C7Aft6piiKwAAAAAARAE/v///yIdA3l/Y93utFZrbhbu39xH57SnqHapVbKBKc0SLbDSSST/IQPkba2//tbCYqeqLgOibmakDxoeeYLx3l/HO8wVKWS2sCIeA3l/Y93utFZrbhbu39xH57SnqHapVbKBKc0SLbDSSST/QIS9eRsAnfYyMp1I+REL0413zrfw/Ft3zNlR5182XO4aZcoQx4GUbqwVOhpqSJ/uVrVoI267vi1MWFe3l4E42gsAAQMIGHMBAAAAAAABBCJRIGMMBZnbCH2YpUYBCy8dLGwSNdRnWHdzM6kzpRFDcHT7AQlCA3l/Y93utFZrbhbu39xH57SnqHapVbKBKc0SLbDSSST/AvDQ5KM3KA/hUyUVTk44Yr42YZmOgJFyjC8HrTgNVpzLAA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "0c0d88580cbe7d31f076b96f5b48076238c3cb00b14f1627ad18307f30bfd168",
+            "public_key": "0255baae54015e98ab81f1159e76e571f554d99bf1e1d1b6ef89a52e60178fa57d",
+            "prevout_txid": "d15960931d0fd54badb9bf4c9f1a7635e6c75410887093203dce32c2f0e6747a",
+            "prevout_index": 0,
+            "prevout_scriptpubkey": "76a914b43ce3b0c9f1c75ff801577534fd0bb01fb7aa6288ac",
+            "amount": 100000,
+            "non_witness_utxo": "020000000106cf519d22ec7a6c10a6e567d365075366410852a7065c196928d352fb92b76b0000000000ffffffff01a0860100000000001976a914b43ce3b0c9f1c75ff801577534fd0bb01fb7aa6288ac00000000",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03797f63ddeeb4566b6e16eedfdc47e7b4a7a876a955b28129cd122db0d24924ff",
+            "ecdh_share": "03e46dadbffed6c262a7aa2e03a26e66a40f1a1e7982f1de5fc73bcc152964b6b0",
+            "dleq_proof": "84bd791b009df632329d48f9110bd38d77ceb7f0fc5b77ccd951e75f365cee1a65ca10c781946eac153a1a6a489fee56b568236ebbbe2d4c5857b7978138da0b",
+            "input_index": 0
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 95000,
+            "sp_v0_info": "03797f63ddeeb4566b6e16eedfdc47e7b4a7a876a955b28129cd122db0d24924ff02f0d0e4a337280fe15325154e4e3862be3661998e8091728c2f07ad380d569ccb",
+            "script": "5120630c0599db087d98a546010b2f1d2c6c1235d46758777333a933a511437074fb"
+          }
+        ]
+      }
+    },
+    {
+      "description": "ecdh coverage: missing PSBT_IN_BIP32_DERIVATION field for P2PKH input when PSBT_GLOBAL_SP_DLEQ set",
+      "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBAQYBACIHA3l/Y93utFZrbhbu39xH57SnqHapVbKBKc0SLbDSSST/IQPkba2//tbCYqeqLgOibmakDxoeeYLx3l/HO8wVKWS2sCIIA3l/Y93utFZrbhbu39xH57SnqHapVbKBKc0SLbDSSST/QKgRO0cbxnwVZv0tmu3fUOUw0aNLg6qHwla4pvTGVqjnPyAY+qFD7Cn2iRFdCZj715JvIjZGp0KTGZbEut8Za38AAQ4g0Vlgkx0P1Uutub9Mnxp2NebHVBCIcJMgPc4ywvDmdHoBDwQAAAAAAQBVAgAAAAEGz1GdIux6bBCm5WfTZQdTZkEIUqcGXBlpKNNS+5K3awAAAAAA/////wGghgEAAAAAABl2qRS0POOwyfHHX/gBV3U0/QuwH7eqYoisAAAAAAEQBP7///8AAQMIGHMBAAAAAAABBCJRIGMMBZnbCH2YpUYBCy8dLGwSNdRnWHdzM6kzpRFDcHT7AQlCA3l/Y93utFZrbhbu39xH57SnqHapVbKBKc0SLbDSSST/AvDQ5KM3KA/hUyUVTk44Yr42YZmOgJFyjC8HrTgNVpzLAA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "0c0d88580cbe7d31f076b96f5b48076238c3cb00b14f1627ad18307f30bfd168",
+            "public_key": "0255baae54015e98ab81f1159e76e571f554d99bf1e1d1b6ef89a52e60178fa57d",
+            "prevout_txid": "d15960931d0fd54badb9bf4c9f1a7635e6c75410887093203dce32c2f0e6747a",
+            "prevout_index": 0,
+            "prevout_scriptpubkey": "76a914b43ce3b0c9f1c75ff801577534fd0bb01fb7aa6288ac",
+            "amount": 100000,
+            "non_witness_utxo": "020000000106cf519d22ec7a6c10a6e567d365075366410852a7065c196928d352fb92b76b0000000000ffffffff01a0860100000000001976a914b43ce3b0c9f1c75ff801577534fd0bb01fb7aa6288ac00000000",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03797f63ddeeb4566b6e16eedfdc47e7b4a7a876a955b28129cd122db0d24924ff",
+            "ecdh_share": "03e46dadbffed6c262a7aa2e03a26e66a40f1a1e7982f1de5fc73bcc152964b6b0",
+            "dleq_proof": "a8113b471bc67c1566fd2d9aeddf50e530d1a34b83aa87c256b8a6f4c656a8e73f2018faa143ec29f689115d0998fbd7926f223646a742931996c4badf196b7f"
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 95000,
+            "sp_v0_info": "03797f63ddeeb4566b6e16eedfdc47e7b4a7a876a955b28129cd122db0d24924ff02f0d0e4a337280fe15325154e4e3862be3661998e8091728c2f07ad380d569ccb",
+            "script": "5120630c0599db087d98a546010b2f1d2c6c1235d46758777333a933a511437074fb"
+          }
+        ]
+      }
+    },
+    {
+      "description": "ecdh coverage: PSBT_GLOBAL_SP_ECDH_SHARE set with no eligible inputs",
+      "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEBIgcDeX9j3e60VmtuFu7f3EfntKeodqlVsoEpzRItsNJJJP8hApofVy61ADOjKOf38sloYw511UauTAM3x6bap1oW14/lIggDeX9j3e60VmtuFu7f3EfntKeodqlVsoEpzRItsNJJJP9AUclGamyanQ40lMfByym3MYCoPBtvNsnEJVQOMEwiKZN4mrIEMwYILPDNg8MPisAYWgJ6CmOxYEvB5kuNEXXNMwABDiB/aLTM+z3DjuKpgO0xrosdvqzPkaQCDMXm4nNdz5JfnwEPBAAAAAABASughgEAAAAAACIAIDSy3vjtJ30jjDLiRALlL/yl4hdf8XzRC1n8JNfTfynLAQUjIQKKlm9gwsaJL1JBpBuO++pTDBHbeE/O2Im0GxOJam6V7qwBEAT+////AAEDCBhzAQAAAAAAAQlCA3l/Y93utFZrbhbu39xH57SnqHapVbKBKc0SLbDSSST/AvDQ5KM3KA/hUyUVTk44Yr42YZmOgJFyjC8HrTgNVpzLAA==",
+      "supplementary": {
+        "inputs": [
+          {
+            "input_index": 0,
+            "private_key": "085621fa8589af76c4d0e44f9f66bd9024c61d253bf158dc43f9a3171dbd00c1",
+            "public_key": "028a966f60c2c6892f5241a41b8efbea530c11db784fced889b41b13896a6e95ee",
+            "prevout_txid": "7f68b4ccfb3dc38ee2a980ed31ae8b1dbeaccf91a4020cc5e6e2735dcf925f9f",
+            "prevout_index": 0,
+            "prevout_scriptpubkey": "002034b2def8ed277d238c32e24402e52ffca5e2175ff17cd10b59fc24d7d37f29cb",
+            "amount": 100000,
+            "witness_utxo": "a08601000000000022002034b2def8ed277d238c32e24402e52ffca5e2175ff17cd10b59fc24d7d37f29cb",
+            "sequence": 4294967294,
+            "signed": false
+          }
+        ],
+        "sp_proofs": [
+          {
+            "scan_key": "03797f63ddeeb4566b6e16eedfdc47e7b4a7a876a955b28129cd122db0d24924ff",
+            "ecdh_share": "029a1f572eb50033a328e7f7f2c968630e75d546ae4c0337c7a6daa75a16d78fe5",
+            "dleq_proof": "51c9466a6c9a9d0e3494c7c1cb29b73180a83c1b6f36c9c425540e304c222993789ab2043306082cf0cd83c30f8ac0185a027a0a63b1604bc1e64b8d1175cd33"
+          }
+        ],
+        "outputs": [
+          {
+            "output_index": 0,
+            "amount": 95000,
+            "sp_v0_info": "03797f63ddeeb4566b6e16eedfdc47e7b4a7a876a955b28129cd122db0d24924ff02f0d0e4a337280fe15325154e4e3862be3661998e8091728c2f07ad380d569ccb"
+          }
+        ]
+      }
+    },
+    {
       "description": "ecdh coverage: output 1 missing ECDH share for scan key with one input / three sp outputs (different scan keys)",
       "psbt": "cHNidP8B+wQCAAAAAQIEAgAAAAEEAQEBBQEDAQYBAAABDiAYpxdmOwurFLEqGncTI/8eQHndUy5d0T4o6hCBxwCYSgEPBAAAAAABAR9ADQMAAAAAABYAFCKactNKZFvTSWu79Qu7gckGP0+UAQMEAQAAACIGAsgXu3Uhr8NeqW87+ycObrUN3/pVYGJ7lh/sAPKZZQi/CAAAAIAAAAAAARAE/v///yIdArlFYVfpRu8H90tU+gm+Sn6Tjcr7+ye0s3LFc8BZ8SqwIQLChkR0sISqyB9uMKxe30ZnOTzmBNgI0/SZoJhOi1JJdCIdA2UdLAc/ywKk2C3aU/HVAdd6A1BmZ5hUZHOyEmts0afeIQN2iSMnxOeAru7UzhvJK7ASK3t5ENlvCtUUi0lvnD6S+yIeArlFYVfpRu8H90tU+gm+Sn6Tjcr7+ye0s3LFc8BZ8SqwQPCxHVHD/ROzjgpsjvwu4Mpxdzr2dLMVHmiSFJJcS1fIFojJ4Hi3UIhabKsoa1d+k6JJfrSWNrGvG2vILnyRElEiHgNlHSwHP8sCpNgt2lPx1QHXegNQZmeYVGRzshJrbNGn3kCY8UrEWvZFmrDITUfaU2TPsUT/kL2scy+cq8bbAA3PGpXjsx97cKBCmKUbb9RRbIHXFsmVT4rxDD1ZgJruK704AAEDCJBfAQAAAAAAAQQiUSDTlxRqgoZbVOsSuepx1oJP6rD5KkgTf3p5OmhZazNnpAEJQgNlHSwHP8sCpNgt2lPx1QHXegNQZmeYVGRzshJrbNGn3gPycOClYyGDtqsBB06HfmgA2wD1x8XS+vu2j5wo1IVFJAABAwgQJwAAAAAAAAEEIlEgzeOdiwW0lvjxjyCyfQr5oyMzCeBHIhnggT/ztdN4fikBCUIDUteMQTkAMq2RgWppf8dA2OuQnPBNcIhSZLBR8jheJewC4MTBh7chX5l8hIWnW0WRtsKEd7laESO5lpItMVSGC/gAAQMIIE4AAAAAAAABBCJRINLSQezkGFFKoY45kuyVPE1K1exwSmk+IQa6IsOwWnqDAQlCArlFYVfpRu8H90tU+gm+Sn6Tjcr7+ye0s3LFc8BZ8SqwAhJoHj8J6uOKjy8/7NfdVvxYbPoCjoqzP3KpD4QKbSJcAA==",
       "supplementary": {
