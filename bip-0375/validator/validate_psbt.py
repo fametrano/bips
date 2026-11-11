@@ -213,14 +213,22 @@ def validate_ecdh_coverage(psbt: PSBT) -> Tuple[bool, str]:
             if not dleq_proof:
                 return False, "Global ECDH share missing DLEQ proof"
 
+            A_sum = None
             for i, input_map in enumerate(psbt.i):
-                if is_input_eligible(input_map) and pubkey_from_eligible_input(input_map) is None:
+                if not is_input_eligible(input_map):
+                    continue
+                A = pubkey_from_eligible_input(input_map)
+                if A is None:
                     return False, f"Input {i} missing public key for DLEQ verification"
+                A_sum = A if A_sum is None else A_sum + A
 
-            _, summed_pubkey_bytes = collect_input_ecdh_and_pubkey(psbt, scan_key)
-            if summed_pubkey_bytes is None:
+            if A_sum is None:
                 return False, "Global ECDH share set but no eligible inputs"
-            A_sum = GE.from_bytes(summed_pubkey_bytes)
+            if A_sum.infinity:
+                return (
+                    False,
+                    "Global DLEQ proof invalid: eligible input public keys sum to the point at infinity",
+                )
 
             valid, msg = validate_dleq_proof(A_sum, scan_key, ecdh_share, dleq_proof)
             if not valid:

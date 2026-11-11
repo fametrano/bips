@@ -329,6 +329,9 @@ Use the provided [[bip-0375/test_runner.py|test runner]] to validate each test v
 | PSBT_GLOBAL_SP_ECDH_SHARE set with no eligible inputs
 |-
 | ECDH Coverage
+| eligible input public keys sum to the point at infinity when PSBT_GLOBAL_SP_ECDH_SHARE set
+|-
+| ECDH Coverage
 | output 1 missing ECDH share for scan key with one input / three sp outputs (different scan keys)
 |-
 | ECDH Coverage
