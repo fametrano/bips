@@ -342,6 +342,9 @@ Use the provided [[bip-0375/test_runner.py|test runner]] to validate each test v
 |-
 | Output Scripts
 | k values assigned to wrong output indices with three sp outputs (same scan / spend keys)
+|-
+| Output Scripts
+| PSBT_OUT_SCRIPT set for sp output when the eligible input keys sum to the point at infinity
 |}
 
 ===Valid PSBTs===
