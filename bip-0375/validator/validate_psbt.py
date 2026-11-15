@@ -342,7 +342,14 @@ def validate_output_scripts(psbt: PSBT) -> Tuple[bool, str]:
             psbt, scan_pubkey_bytes
         )
 
-        if ecdh_share_bytes and summed_pubkey_bytes and outpoints:
+        if bytes(33) in (ecdh_share_bytes, summed_pubkey_bytes):
+            # BIP 352 has the sender fail where the input private keys sum to zero
+            if PSBT_OUT_SCRIPT in output_map:
+                return (
+                    False,
+                    f"Output {output_idx} has PSBT_OUT_SCRIPT but eligible input public keys sum to the point at infinity",
+                )
+        elif ecdh_share_bytes and summed_pubkey_bytes and outpoints:
             computed_script = compute_silent_payment_output_script(
                 outpoints, summed_pubkey_bytes, ecdh_share_bytes, spend_pubkey_bytes, k
             )

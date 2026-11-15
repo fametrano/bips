@@ -29,6 +29,7 @@ def collect_input_ecdh_and_pubkey(
 
     Checks global ECDH share first, falls back to per-input shares.
     Returns (ecdh_share_bytes, summed_pubkey_bytes) or (None, None).
+    A per-input sum at the point at infinity is returned as 33 zero bytes.
     """
     # Check for global ECDH share
     summed_pubkey = None
@@ -63,7 +64,10 @@ def collect_input_ecdh_and_pubkey(
                 )
 
     if combined_ecdh and summed_pubkey:
-        return combined_ecdh.to_bytes_compressed(), summed_pubkey.to_bytes_compressed()
+        return (
+            combined_ecdh.to_bytes_compressed_with_infinity(),
+            summed_pubkey.to_bytes_compressed_with_infinity(),
+        )
     return None, None
 
 
